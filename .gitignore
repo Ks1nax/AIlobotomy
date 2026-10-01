@@ -1,0 +1,17 @@
+# environment
+.venv/
+__pycache__/
+*.pyc
+
+# downloaded and saved models
+hf_cache/
+models/*
+!models/README.txt
+saved/*
+!saved/README.txt
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

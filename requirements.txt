@@ -1,0 +1,8 @@
+transformers>=4.56
+accelerate
+fastapi
+uvicorn
+safetensors
+sentencepiece
+protobuf
+jinja2

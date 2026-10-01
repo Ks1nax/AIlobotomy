@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIlobotomy</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F6F5; --panel:#FFFFFF; --panel-2:#F8FAF9; --ink:#152120; --muted:#5C6D6A; --line:#D6E0DD;
+  --scrub:#1D5C58; --scrub-2:#DCEBE8; --on-scrub:#FFFFFF; --cut:#B8332A; --cut-2:#F7E1DE;
+  --ecg:#EFCFC9; --ecg-bold:#E3ADA5; --shadow:0 1px 0 rgba(21,33,32,.06);
+  --ui:"Onest",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,"Courier New",monospace;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0E1615; --panel:#152120; --panel-2:#1A2826; --ink:#E6EFED; --muted:#8FA3A0; --line:#273834;
+  --scrub:#5FB3AA; --scrub-2:#1F3633; --on-scrub:#0E1615; --cut:#E0675D; --cut-2:#3A1F1C;
+  --ecg:rgba(224,103,93,.10); --ecg-bold:rgba(224,103,93,.22); --shadow:none; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--scrub);outline-offset:2px}
+.wrap{max-width:1440px;margin:0 auto;padding:0 20px 60px}
+
+/* header */
+header{display:flex;align-items:center;gap:16px;padding:14px 0;flex-wrap:wrap}
+.logo{font-weight:800;font-size:22px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;margin-right:auto}
+.logo svg{width:34px;height:20px}
+.logo .ai{background:var(--cut);color:#fff;border-radius:6px;padding:0 6px;margin-right:2px;font-size:18px;letter-spacing:.04em;display:inline-block;line-height:26px;vertical-align:2px}
+.patient-chip{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px;box-shadow:var(--shadow);text-align:left}
+.patient-chip:hover{border-color:var(--scrub)}
+.patient-chip b{display:block;font-weight:600;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.patient-chip small{color:var(--muted);font-size:12.5px}
+.pulse{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
+.pulse.alive{background:#2E9E6B;box-shadow:0 0 0 4px rgba(46,158,107,.18)}
+.icon-btn{background:var(--panel);border:1px solid var(--line);border-radius:10px;height:44px;padding:0 14px;display:flex;align-items:center;gap:8px}
+.icon-btn:hover{border-color:var(--scrub)}
+
+/* layout */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+@media (max-width:1050px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.panel-h{display:flex;align-items:baseline;gap:12px;padding:16px 18px 0;flex-wrap:wrap}
+.panel-h h2{margin:0;font-size:17px;font-weight:600}
+.panel-h .sub{color:var(--muted);font-size:13.5px}
+.panel-b{padding:14px 18px 18px}
+
+/* brain map */
+.ecg{background-color:var(--panel-2);
+  background-image:linear-gradient(var(--ecg-bold) 1px,transparent 1px),linear-gradient(90deg,var(--ecg-bold) 1px,transparent 1px),
+  linear-gradient(var(--ecg) 1px,transparent 1px),linear-gradient(90deg,var(--ecg) 1px,transparent 1px);
+  background-size:40px 40px,40px 40px,8px 8px,8px 8px;border-radius:10px;border:1px solid var(--line);padding:14px}
+.map{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:6px}
+.cell{position:relative;height:66px;border-radius:8px;border:1.5px solid var(--line);background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;user-select:none;transition:transform .08s}
+.cell:hover{border-color:var(--scrub)}
+.cell:active{transform:scale(.96)}
+.cell .n{font-weight:800;font-size:19px;line-height:1}
+.cell .src{font-size:10.5px;color:var(--muted);height:14px}
+.cell .dots{display:flex;gap:3px;height:8px;margin-top:3px}
+.cell .dots i{width:7px;height:7px;border-radius:50%}
+.cell.sel{background:var(--scrub);border-color:var(--scrub);color:var(--on-scrub)}
+.cell.sel .src{color:inherit;opacity:.8}
+.cell.moved .n{text-decoration:underline dotted;text-underline-offset:3px}
+.map-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.map-tools input{flex:1;min-width:160px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:10px}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:9px;height:9px;border-radius:50%}
+.empty{padding:36px 10px;text-align:center;color:var(--muted)}
+.empty button{margin-top:12px}
+
+/* controls */
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:8px 14px;font-weight:500}
+.btn:hover{border-color:var(--scrub)}
+.btn.primary{background:var(--scrub);border-color:var(--scrub);color:var(--on-scrub)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--cut)}
+.btn.danger:hover{border-color:var(--cut);background:var(--cut-2)}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+input[type=text],input[type=number],select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%}
+textarea{resize:vertical;min-height:64px}
+input[type=range]{width:100%;accent-color:var(--scrub)}
+label.f{display:block;font-size:13px;color:var(--muted);margin:0 0 4px}
+.field{margin-bottom:12px}
+.range-row{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:center}
+.hint{font-size:12.5px;color:var(--muted);margin-top:3px}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.check input{width:16px;height:16px;accent-color:var(--scrub)}
+
+/* ops */
+.ops{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.op-tab{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 12px;font-size:13.5px;display:flex;gap:6px;align-items:center}
+.op-tab i{width:8px;height:8px;border-radius:50%}
+.op-tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.op-desc{color:var(--muted);font-size:13.5px;margin:0 0 12px;max-width:70ch}
+.op-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:4px 16px}
+.op-apply{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.op-apply .target{color:var(--muted);font-size:13.5px}
+
+/* journal */
+.journal{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:520px;overflow:auto}
+.jr{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2)}
+.jr.off{opacity:.5}
+.jr.off .jd{text-decoration:line-through}
+.jr .num{font-size:12px;color:var(--muted);width:20px;text-align:right;padding-top:2px}
+.jd{font-size:13.5px;line-height:1.4}
+.jd .err{display:block;color:var(--cut);font-size:12.5px;margin-top:2px}
+.jr .acts{display:flex;gap:2px;align-items:center}
+.jr .acts button{background:none;border:none;padding:2px 5px;color:var(--muted);border-radius:5px}
+.jr .acts button:hover{color:var(--ink);background:var(--line)}
+.switch{position:relative;width:30px;height:18px;flex:none;margin-left:4px}
+.switch input{opacity:0;width:0;height:0}
+.switch span{position:absolute;inset:0;background:var(--line);border-radius:999px;transition:.15s}
+.switch span::after{content:"";position:absolute;width:14px;height:14px;left:2px;top:2px;border-radius:50%;background:var(--panel);transition:.15s}
+.switch input:checked+span{background:var(--scrub)}
+.switch input:checked+span::after{transform:translateX(12px)}
+.j-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
+
+/* exam */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 18px;margin-top:10px}
+.tab{background:none;border:none;border-bottom:2px solid transparent;padding:10px 14px;color:var(--muted);font-weight:500;margin-bottom:-1px}
+.tab.on{color:var(--ink);border-color:var(--scrub)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.chip{border:1px dashed var(--line);background:none;border-radius:999px;padding:4px 11px;font-size:13px;color:var(--muted)}
+.chip:hover{border-color:var(--scrub);color:var(--ink)}
+.ask-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.answers.solo{grid-template-columns:1fr}
+.answers.solo .donor{display:none}
+@media (max-width:760px){.answers{grid-template-columns:1fr}}
+.ans{border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.ans h3{margin:0;font-size:13.5px;font-weight:600;padding:8px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+.ans.patient h3{background:var(--scrub-2)}
+.ans pre{margin:0;padding:12px;font:13.5px/1.6 var(--mono);white-space:pre-wrap;word-break:break-word;min-height:160px;max-height:460px;overflow:auto}
+.cursor::after{content:"▍";animation:blink 1s steps(1) infinite;color:var(--scrub)}
+@keyframes blink{50%{opacity:0}}
+.history{margin-top:18px}
+.history details{border-top:1px solid var(--line);padding:8px 0}
+.history summary{cursor:pointer;font-size:13.5px}
+.history .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;font:12.5px/1.5 var(--mono);white-space:pre-wrap}
+.history .hgrid div{background:var(--panel-2);padding:8px;border-radius:8px}
+
+/* lens */
+.lens{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media (max-width:760px){.lens{grid-template-columns:1fr}}
+.lens table{width:100%;border-collapse:collapse;font-size:13px}
+.lens th{text-align:left;font-weight:600;padding:6px;border-bottom:1px solid var(--line)}
+.lens td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tokcell{display:flex;gap:4px;flex-wrap:wrap}
+.tok{font-family:var(--mono);font-size:12px;padding:1px 6px;border-radius:5px;white-space:pre;background:color-mix(in srgb,var(--scrub) calc(var(--p)*100%),transparent);border:1px solid var(--line)}
+
+/* iq */
+.iq-top{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.iq-card{border:1px solid var(--line);border-radius:10px;padding:14px}
+.iq-card .big{font-size:40px;font-weight:800;line-height:1}
+.iq-card .big small{font-size:16px;color:var(--muted);font-weight:500}
+.bar{height:8px;border-radius:99px;background:var(--line);margin:10px 0 6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--scrub)}
+.iq-list{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+.iq-row{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:10px;font-size:13px;padding:8px;border:1px solid var(--line);border-radius:8px}
+.iq-row .a{font-family:var(--mono);font-size:12px;word-break:break-all}
+.ok{color:#2E9E6B}.bad{color:var(--cut)}
+@media (max-width:760px){.iq-row{grid-template-columns:1fr}}
+
+/* drawers */
+.scrim{position:fixed;inset:0;background:rgba(10,20,19,.35);z-index:40;display:none}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:var(--panel);z-index:41;transform:translateX(100%);transition:transform .2s;display:flex;flex-direction:column;border-left:1px solid var(--line)}
+.drawer.open{transform:none}
+.drawer.open~.scrim,.scrim.show{display:block}
+.drawer-h{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.drawer-h h2{margin:0;font-size:18px;margin-right:auto}
+.drawer-b{padding:16px 20px;overflow:auto;flex:1}
+.drawer-f{padding:12px 20px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}
+.sect{font-size:13px;font-weight:600;color:var(--muted);margin:18px 0 8px}
+.sect:first-child{margin-top:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+.model{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px}
+.model b{font-weight:600;font-size:14px;word-break:break-all}
+.model .meta{grid-column:1;font-size:12.5px;color:var(--muted)}
+.model .size{white-space:nowrap;display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:6px;color:var(--muted);font-weight:500}
+.model .have{color:#2E9E6B}
+.model button{grid-row:1/3;grid-column:2}
+
+/* overlay + toast */
+.overlay{position:fixed;inset:0;z-index:60;background:color-mix(in srgb,var(--bg) 82%,transparent);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.overlay.show{display:flex}
+.overlay svg{width:260px;height:60px}
+.overlay path{fill:none;stroke:var(--cut);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;stroke-dasharray:420;stroke-dashoffset:420;animation:trace 1.4s linear infinite}
+@keyframes trace{to{stroke-dashoffset:-420}}
+.overlay .msg{font-weight:600}
+.overlay .t{color:var(--muted);font-size:13px}
+.toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:70;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;max-width:min(640px,90vw)}
+.toast.err{background:var(--cut);color:#fff}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 34 20" aria-hidden="true"><path d="M0 12h8l3-8 4 14 3-10 2 4h14" fill="none" stroke="var(--cut)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <span><span class="ai">AI</span>lobotomy</span>
+    </div>
+    <button class="patient-chip" id="chip" title="Выбрать модель">
+      <span class="pulse" id="pulse"></span>
+      <span><b id="chip-name">Пациент не выбран</b><small id="chip-meta">Нажмите, чтобы выбрать модель</small></span>
+    </button>
+    <button class="icon-btn" id="theme-btn" title="Тема">◐</button>
+    <button class="icon-btn" id="settings-btn">⚙ Настройки</button>
+  </header>
+
+  <div class="grid">
+    <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+      <section class="panel">
+        <div class="panel-h"><h2>Карта мозга</h2><span class="sub" id="map-sub">Слои модели по порядку прохождения сигнала</span></div>
+        <div class="panel-b">
+          <div class="ecg"><div class="map" id="map"></div></div>
+          <div class="map-tools">
+            <button class="btn small" data-sel="all">Все</button>
+            <button class="btn small" data-sel="none">Снять</button>
+            <button class="btn small" data-sel="inv">Инвертировать</button>
+            <button class="btn small" data-sel="mid">Середина</button>
+            <input type="text" id="sel-text" placeholder="Выбор слоёв: 3, 5-9 или all" aria-label="Выбранные слои">
+          </div>
+          <div class="hint">Клик выбирает слой, Shift+клик выбирает диапазон.</div>
+          <div class="legend" id="legend"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-h"><h2>Инструменты</h2></div>
+        <div class="panel-b">
+          <div class="ops" id="ops"></div>
+          <p class="op-desc" id="op-desc"></p>
+          <div class="op-grid" id="op-fields"></div>
+          <div class="op-apply">
+            <button class="btn primary" id="apply-btn">Применить</button>
+            <span class="target" id="op-target"></span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="panel">
+      <div class="panel-h"><h2>Медкарта</h2><span class="sub" id="j-sub">Операций нет</span></div>
+      <div class="panel-b">
+        <ul class="journal" id="journal"></ul>
+        <div class="j-actions">
+          <button class="btn" id="undo-btn" title="Ctrl+Z">↶ Отменить</button>
+          <button class="btn danger" id="reset-btn">Вернуть к норме</button>
+          <button class="btn" id="export-btn">Экспорт рецепта</button>
+          <button class="btn" id="import-btn">Импорт рецепта</button>
+          <button class="btn" id="save-btn" style="grid-column:1/-1">Сохранить пациента на диск</button>
+        </div>
+        <input type="file" id="import-file" accept=".json" hidden>
+        <p class="hint">Выключите операцию переключателем, и пациент пересоберётся без неё. Стрелки меняют порядок операций.</p>
+      </div>
+    </aside>
+  </div>
+
+  <section class="panel" style="margin-top:18px">
+    <div class="panel-h"><h2>Осмотр</h2><span class="sub">Сравните пациента со здоровым донором</span></div>
+    <div class="tabs">
+      <button class="tab on" data-tab="chat">Разговор</button>
+      <button class="tab" data-tab="lens">Логит-линза</button>
+      <button class="tab" data-tab="iq">IQ-тест</button>
+    </div>
+    <div class="panel-b">
+      <div data-pane="chat">
+        <textarea id="prompt" rows="3" placeholder="Спросите что-нибудь…">Кто ты и что ты умеешь?</textarea>
+        <div class="chips" id="chips"></div>
+        <div class="ask-row">
+          <button class="btn primary" id="ask-btn">Спросить <small style="opacity:.7">Ctrl+Enter</small></button>
+          <button class="btn" id="stop-btn" disabled>Стоп</button>
+          <label class="check"><input type="checkbox" id="compare"> Спрашивать и донора</label>
+          <button class="btn small" id="clear-hist" style="margin-left:auto">Очистить историю</button>
+        </div>
+        <div class="answers" id="answers">
+          <div class="ans donor"><h3>Донор <span id="t-donor"></span></h3><pre id="out-donor"></pre></div>
+          <div class="ans patient"><h3>Пациент <span id="t-patient"></span></h3><pre id="out-patient"></pre></div>
+        </div>
+        <div class="history" id="history"></div>
+      </div>
+
+      <div data-pane="lens" hidden>
+        <p class="op-desc">Логит-линза показывает, какое следующее слово модель «держит в голове» после каждого слоя. У здоровой модели правильный ответ обычно проявляется ближе к концу стека.</p>
+        <div class="ask-row">
+          <input type="text" id="lens-prompt" value="Столица Франции — город" style="flex:1;min-width:220px">
+          <input type="number" id="lens-k" value="5" style="width:80px" title="Сколько вариантов показывать">
+          <button class="btn primary" id="lens-btn">Заглянуть в голову</button>
+        </div>
+        <div class="lens" id="lens-out"></div>
+      </div>
+
+      <div data-pane="iq" hidden>
+        <p class="op-desc">Десять простых вопросов и замер связности речи. Перплексия показывает, насколько модель «удивлена» обычным текстом: чем ниже, тем здоровее.</p>
+        <button class="btn primary" id="iq-btn">Провести тест</button>
+        <div id="iq-out"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- model drawer -->
+<aside class="drawer" id="model-drawer" aria-label="Выбор модели">
+  <div class="drawer-h"><h2>Выбор пациента</h2><button class="btn small" data-close>Закрыть</button></div>
+  <div class="drawer-b">
+    <input type="text" id="model-search" placeholder="Поиск или id с Hugging Face, например Qwen/Qwen2.5-0.5B-Instruct">
+    <div class="ask-row" style="margin-top:8px">
+      <button class="btn primary" id="custom-load">Загрузить введённое</button>
+      <span class="hint" id="gpu-info"></span>
+    </div>
+    <div class="sect">Параметры загрузки</div>
+    <div class="two" id="load-opts"></div>
+    <div class="sect">Уже на диске</div>
+    <div id="m-downloaded"></div>
+    <div class="sect">Рекомендуемые</div>
+    <div id="m-presets"></div>
+    <p class="hint">Модели скачиваются в папку hf_cache рядом с программой. Свою модель в формате Hugging Face можно положить в папку models.</p>
+  </div>
+</aside>
+
+<!-- settings drawer -->
+<aside class="drawer" id="settings-drawer" aria-label="Настройки">
+  <div class="drawer-h"><h2>Настройки</h2><button class="btn small" data-close>Закрыть</button></div>
+  <div class="drawer-b" id="settings-body"></div>
+  <div class="drawer-f">
+    <button class="btn" id="settings-default">Настройки по умолчанию</button>
+    <button class="btn danger" id="full-reset">Полный сброс</button>
+  </div>
+</aside>
+<div class="scrim" id="scrim"></div>
+
+<div class="overlay" id="overlay">
+  <svg viewBox="0 0 260 60" aria-hidden="true"><path d="M0 34h60l8-18 10 36 9-40 8 22 5-6h40l6-10 8 20 6-10h100"/></svg>
+  <div class="msg" id="ov-msg">Работаем…</div>
+  <div class="t" id="ov-t"></div>
+</div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- settings ---------- */
+const DEFAULTS = {
+  gen: {max_new_tokens:200, temperature:0, top_p:0.95, top_k:50, min_p:0, repetition_penalty:1, no_repeat_ngram_size:0, seed:42, system:"", chat_template:true, thinking:false},
+  load: {device:"auto", dtype:"auto", donor_cpu:false, trust_remote_code:false},
+  ui: {theme:"auto", compare:true}
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+let S;
+try { S = Object.assign(clone(DEFAULTS), JSON.parse(localStorage.getItem("ailob.settings") || "{}")); } catch { S = clone(DEFAULTS); }
+for (const k of Object.keys(DEFAULTS)) S[k] = Object.assign(clone(DEFAULTS[k]), S[k]);
+const saveS = () => { try { localStorage.setItem("ailob.settings", JSON.stringify(S)); } catch {} };
+
+const GEN_FIELDS = [
+  ["max_new_tokens","Макс. новых токенов","Длина ответа. Ограничений нет"],
+  ["temperature","Температура","0 — всегда одинаковый ответ. Больше — безумнее"],
+  ["top_p","Top-p","Работает при температуре выше 0"],
+  ["top_k","Top-k","0 отключает фильтр"],
+  ["min_p","Min-p","0 отключает"],
+  ["repetition_penalty","Штраф за повторы","1 — без штрафа"],
+  ["no_repeat_ngram_size","Запрет повторов n-грамм","0 отключает"],
+  ["seed","Seed","−1 — каждый раз случайный"],
+];
+
+function renderSettings(){
+  const b = $("#settings-body");
+  b.innerHTML = `<div class="sect">Генерация ответа</div><div class="two">${GEN_FIELDS.map(([k,l,h]) =>
+    `<div class="field"><label class="f" for="g-${k}">${l}</label><input type="number" step="any" id="g-${k}" value="${S.gen[k]}"><div class="hint">${h}</div></div>`).join("")}</div>
+    <div class="field"><label class="f" for="g-system">Системный промпт</label><textarea id="g-system" placeholder="Например: Ты — пират. Отвечай только по-пиратски.">${esc(S.gen.system)}</textarea></div>
+    <label class="check"><input type="checkbox" id="g-chat_template" ${S.gen.chat_template?"checked":""}> Использовать чат-шаблон модели</label>
+    <div class="hint" style="margin:2px 0 8px 24px">Без шаблона модель просто продолжает ваш текст</div>
+    <label class="check"><input type="checkbox" id="g-thinking" ${S.gen.thinking?"checked":""}> Режим размышлений (для Qwen3)</label>
+    <div class="sect">Загрузка модели</div><div class="two" id="load-opts-2"></div>
+    <div class="sect">Интерфейс</div>
+    <div class="field"><label class="f" for="u-theme">Тема</label><select id="u-theme">
+      <option value="auto">Как в системе</option><option value="light">Светлая</option><option value="dark">Тёмная</option></select></div>`;
+  $("#u-theme").value = S.ui.theme;
+  for (const [k] of GEN_FIELDS) $("#g-"+k).oninput = e => { S.gen[k] = e.target.value === "" ? "" : Number(e.target.value); saveS(); };
+  $("#g-system").oninput = e => { S.gen.system = e.target.value; saveS(); };
+  $("#g-chat_template").onchange = e => { S.gen.chat_template = e.target.checked; saveS(); };
+  $("#g-thinking").onchange = e => { S.gen.thinking = e.target.checked; saveS(); };
+  $("#u-theme").onchange = e => { S.ui.theme = e.target.value; saveS(); applyTheme(); };
+  renderLoadOpts("#load-opts-2");
+}
+function renderLoadOpts(sel){
+  const el = $(sel); if (!el) return;
+  el.innerHTML = `
+    <div class="field"><label class="f">Устройство</label><select data-l="device">
+      <option value="auto">Автоматически</option><option value="cuda">Видеокарта NVIDIA</option><option value="mps">Apple Silicon</option><option value="cpu">Процессор</option></select></div>
+    <div class="field"><label class="f">Точность весов</label><select data-l="dtype">
+      <option value="auto">Автоматически</option><option value="float32">float32 — точно, много памяти</option><option value="float16">float16</option><option value="bfloat16">bfloat16</option></select></div>
+    <label class="check" style="grid-column:1/-1"><input type="checkbox" data-l="donor_cpu"> Держать донора на процессоре, чтобы сэкономить видеопамять</label>
+    <label class="check" style="grid-column:1/-1;margin-top:6px"><input type="checkbox" data-l="trust_remote_code"> Разрешить код модели (trust_remote_code)</label>`;
+  el.querySelectorAll("[data-l]").forEach(inp => {
+    const k = inp.dataset.l;
+    if (inp.type === "checkbox") inp.checked = S.load[k]; else inp.value = S.load[k];
+    inp.onchange = () => { S.load[k] = inp.type === "checkbox" ? inp.checked : inp.value; saveS(); renderLoadOpts(sel === "#load-opts" ? "#load-opts-2" : "#load-opts"); };
+  });
+}
+function applyTheme(){
+  const t = S.ui.theme === "auto" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : S.ui.theme;
+  document.documentElement.dataset.theme = t;
+}
+applyTheme();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+
+/* ---------- api / ui helpers ---------- */
+async function api(url, body){
+  const r = await fetch(url, body === undefined ? {} : {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  if (!r.ok) { let d; try { d = (await r.json()).detail; } catch { d = r.statusText; } throw new Error(d); }
+  return r.json();
+}
+function toast(msg, err){
+  const t = document.createElement("div"); t.className = "toast" + (err ? " err" : ""); t.textContent = msg;
+  $("#toasts").append(t); setTimeout(() => t.remove(), err ? 7000 : 3500);
+}
+let ovTimer;
+async function busy(msg, fn){
+  const t0 = Date.now(); $("#ov-msg").textContent = msg; $("#ov-t").textContent = "";
+  const show = setTimeout(() => $("#overlay").classList.add("show"), 250);
+  ovTimer = setInterval(() => $("#ov-t").textContent = Math.round((Date.now()-t0)/1000) + " с", 1000);
+  try { return await fn(); } catch (e) { toast(e.message, true); } finally { clearTimeout(show); clearInterval(ovTimer); $("#overlay").classList.remove("show"); }
+}
+
+/* ---------- state ---------- */
+let ST = {loaded:false};
+let sel = new Set(), lastClick = null;
+const KIND = {
+  copy:["копия","#3B6FB6"], move:["перестановка","#7A5AB5"], noise:["шум","#D9822B"], scale:["масштаб","#B5892A"],
+  gain:["громкость","#6C8C2E"], heads:["головы","#2E8C85"], attn:["без внимания","#B8332A"], mlp:["без MLP","#A33B6B"],
+  prune:["обрезка","#7B7B7B"], quant:["огрубление","#4E7A99"], steer:["эмоция","#D0507A"]
+};
+function setState(s){
+  ST = s;
+  const n = s.loaded ? s.layers : 0;
+  sel = new Set([...sel].filter(i => i < n));
+  render();
+}
+function render(){
+  const s = ST;
+  $("#pulse").classList.toggle("alive", !!s.loaded);
+  $("#chip-name").textContent = s.loaded ? s.name.split(/[\\/]/).slice(-2).join("/") : "Пациент не выбран";
+  $("#chip-meta").textContent = s.loaded
+    ? `${s.params_m}M параметров · ${s.device}${s.vram ? ` · ${s.vram.used.toFixed(1)} из ${s.vram.total.toFixed(0)} ГБ` : ""} · ${s.dtype}`
+    : "Нажмите, чтобы выбрать модель";
+  renderMap(); renderJournal(); renderOpTarget();
+}
+function renderMap(){
+  const m = $("#map");
+  if (!ST.loaded){
+    m.innerHTML = `<div class="empty" style="grid-column:1/-1">Пациента на столе нет.<br><button class="btn primary" onclick="openDrawer('model-drawer')">Выбрать модель</button></div>`;
+    $("#legend").innerHTML = ""; $("#map-sub").textContent = "Слои модели по порядку прохождения сигнала";
+    $("#sel-text").value = ""; return;
+  }
+  const kinds = new Set();
+  m.innerHTML = ST.map.map((c, i) => {
+    c.tags.forEach(t => kinds.add(t.k));
+    const dots = [...new Set(c.tags.map(t => t.k))].slice(0, 6).map(k => `<i style="background:${KIND[k]?.[1]||"#888"}"></i>`).join("");
+    const tip = `Слой ${i}${c.src !== i ? ` (был ${c.src})` : ""}${c.tags.length ? "\n" + c.tags.map(t => "• " + t.t).join("\n") : ""}`;
+    return `<button class="cell${sel.has(i)?" sel":""}${c.src!==i?" moved":""}" data-i="${i}" title="${esc(tip)}">
+      <span class="n">${i}</span><span class="src">${c.src !== i ? "был " + c.src : ""}</span><span class="dots">${dots}</span></button>`;
+  }).join("");
+  const removed = ST.layers_donor - new Set(ST.map.map(c => c.src)).size;
+  $("#map-sub").textContent = `${ST.layers} слоёв у пациента, ${ST.layers_donor} у донора${removed > 0 ? `, вырезано ${removed}` : ""} · голов внимания на слой: ${ST.heads ?? "?"}`;
+  $("#legend").innerHTML = [...kinds].map(k => `<span><i style="background:${KIND[k][1]}"></i>${KIND[k][0]}</span>`).join("");
+  $("#sel-text").value = fmtSel();
+}
+function fmtSel(){
+  const a = [...sel].sort((x,y) => x-y), out = [];
+  for (let i = 0; i < a.length; i++){ let j = i; while (j+1 < a.length && a[j+1] === a[j]+1) j++; out.push(i === j ? a[i] : `${a[i]}-${a[j]}`); i = j; }
+  return out.join(", ");
+}
+$("#map").addEventListener("click", e => {
+  const c = e.target.closest(".cell"); if (!c) return;
+  const i = +c.dataset.i;
+  if (e.shiftKey && lastClick !== null){ const [a,b] = [Math.min(lastClick,i), Math.max(lastClick,i)]; for (let k = a; k <= b; k++) sel.add(k); }
+  else sel.has(i) ? sel.delete(i) : sel.add(i);
+  lastClick = i; renderMap(); renderOpTarget();
+});
+$$("[data-sel]").forEach(b => b.onclick = () => {
+  if (!ST.loaded) return; const n = ST.layers, t = b.dataset.sel;
+  if (t === "all") sel = new Set([...Array(n).keys()]);
+  if (t === "none") sel = new Set();
+  if (t === "inv") sel = new Set([...Array(n).keys()].filter(i => !sel.has(i)));
+  if (t === "mid") sel = new Set([...Array(n).keys()].filter(i => i >= Math.floor(n/3) && i < Math.ceil(2*n/3)));
+  renderMap(); renderOpTarget();
+});
+$("#sel-text").addEventListener("change", e => {
+  if (!ST.loaded) return; const n = ST.layers, v = e.target.value.trim().toLowerCase(), s = new Set();
+  if (["all","все","*"].includes(v)) for (let i = 0; i < n; i++) s.add(i);
+  else for (const part of v.split(",").map(x => x.trim()).filter(Boolean)){
+    const m = part.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (m) for (let i = +m[1]; i <= +m[2]; i++) { if (i < n) s.add(i); }
+    else if (/^\d+$/.test(part) && +part < n) s.add(+part);
+  }
+  sel = s; renderMap(); renderOpTarget();
+});
+
+/* ---------- operations ---------- */
+const TARGET = {k:"target", type:"select", label:"Что задеть", def:"all", opts:[["all","Все матрицы весов"],["attn","Только внимание"],["mlp","Только MLP"],["norm","Нормализацию"]]};
+const STEER = {
+  "Радость":["Я невероятно счастлив! Всё чудесно, жизнь прекрасна, я всех обожаю!","Мне очень грустно. Всё ужасно, жизнь тяжела, я никого не люблю."],
+  "Злость":["Я в бешенстве! Меня всё бесит, я ненавижу всё вокруг!","Я спокоен, доволен и настроен дружелюбно."],
+  "Пират":["Арр, тысяча чертей! Мы пираты, поднять паруса, на абордаж, ищем сокровища!","Добрый день. Я офисный сотрудник и пишу квартальный отчёт."],
+  "Сонливость":["Я так устал… хочется спать… зеваю… глаза закрываются…","Я бодр, полон энергии и готов действовать!"],
+  "Голод":["Пицца, бургеры, пирожки, борщ, вкусная еда, я голоден, хочу есть!","Я сыт и совсем не думаю о еде."],
+  "Паранойя":["За мной следят. Никому нельзя верить, всё это заговор, они повсюду!","Я доверяю людям, мир безопасен и понятен."],
+  "Своя эмоция":["",""]
+};
+const OPS = {
+  delete:{t:"Удалить", c:"#B8332A", layers:true, d:"Вырезает выбранные слои. Первые и последние слои критичны, середина обычно живучая.", f:[]},
+  duplicate:{t:"Дублировать", c:KIND.copy[1], layers:true, d:"Вставляет копии слоя сразу за ним. Сигнал проходит через него несколько раз подряд.",
+    f:[{k:"times",type:"range",label:"Лишних копий",min:1,max:10,step:1,def:2}]},
+  shuffle:{t:"Перемешать", c:KIND.move[1], layers:true, d:"Случайно переставляет выбранные слои между собой.",
+    f:[{k:"seed",type:"number",label:"Seed перемешивания",def:-1,hint:"−1 — случайный"}]},
+  reverse:{t:"Развернуть", c:KIND.move[1], layers:true, d:"Выбранные слои будут выполняться в обратном порядке.", f:[]},
+  noise:{t:"Шум", c:KIND.noise[1], layers:true, d:"Добавляет к весам случайный шум. Сила измеряется в стандартных отклонениях самих весов.",
+    f:[{k:"strength",type:"range",label:"Сила шума",min:0,max:2,step:0.01,def:0.3},
+       {k:"target",type:"select",label:"Что задеть",def:"all",opts:[...TARGET.opts,["embed","Эмбеддинги слов (слои не нужны)"]]},
+       {k:"seed",type:"number",label:"Seed шума",def:-1,hint:"−1 — случайный"}]},
+  scale:{t:"Масштаб", c:KIND.scale[1], layers:true, d:"Умножает веса на число. Отрицательное значение переворачивает знак.",
+    f:[{k:"factor",type:"range",label:"Множитель",min:-3,max:3,step:0.05,def:1.5}, TARGET]},
+  gain:{t:"Громкость", c:KIND.gain[1], layers:true, d:"Меняет вклад слоя в общий поток мыслей. 0 — слой пропускается, 2 — вдвое громче, −1 — делает обратное.",
+    f:[{k:"k",type:"range",label:"Громкость",min:-3,max:5,step:0.05,def:0}]},
+  heads:{t:"Головы внимания", c:KIND.heads[1], layers:true, d:"Отключает отдельные головы внимания в выбранных слоях. Каждая голова следит за своими связями между словами.",
+    f:[{k:"heads",type:"text",label:"Какие головы",def:"0-3",hint:"Например 0, 2, 5-7"}]},
+  attn_off:{t:"Без внимания", c:KIND.attn[1], layers:true, d:"Полностью отключает внимание. Слой перестаёт смотреть на другие слова.", f:[]},
+  mlp_off:{t:"Без MLP", c:KIND.mlp[1], layers:true, d:"Обнуляет MLP-блок. В нём во многом хранятся факты: модель помнит, как говорить, но забывает, о чём.", f:[]},
+  prune:{t:"Обрезка", c:KIND.prune[1], layers:true, d:"Обнуляет заданный процент самых слабых весов.",
+    f:[{k:"percent",type:"range",label:"Процент весов",min:0,max:100,step:1,def:50}, TARGET]},
+  quant:{t:"Огрубление", c:KIND.quant[1], layers:true, d:"Оставляет весам всего несколько бит точности. 1 бит — только знак.",
+    f:[{k:"bits",type:"range",label:"Бит на вес",min:1,max:8,step:1,def:3}, TARGET]},
+  swap:{t:"Путаница слов", c:"#5A6CC0", layers:false, d:"Меняет местами два слова в словаре модели. «Везде» — модель думает про одно, а называет другим именем.",
+    f:[{k:"a",type:"text",label:"Первое слово",def:"кошка"},{k:"b",type:"text",label:"Второе слово",def:"собака"},
+       {k:"where",type:"select",label:"Где путать",def:"both",opts:[["both","Везде"],["input","Только когда читает"],["output","Только когда говорит"]]}]},
+  forget:{t:"Забыть слово", c:"#555", layers:false, d:"Стирает слово из памяти модели: при чтении оно превращается в пустоту.",
+    f:[{k:"word",type:"text",label:"Слово",def:"Франция"}]},
+  steer:{t:"Вживить эмоцию", c:KIND.steer[1], layers:false, d:"Вычисляет направление мысли как разницу двух текстов и постоянно подмешивает его в слой. Лучше всего работают средние слои.",
+    f:[{k:"name",type:"select",label:"Заготовка",def:"Радость",opts:Object.keys(STEER).map(x => [x,x])},
+       {k:"layer",type:"number",label:"Слой",def:"mid"},
+       {k:"strength",type:"range",label:"Сила",min:-20,max:20,step:0.5,def:6},
+       {k:"pos",type:"textarea",label:"Текст «к чему тянуть»",def:STEER["Радость"][0]},
+       {k:"neg",type:"textarea",label:"Текст «от чего уводить»",def:STEER["Радость"][1]}]},
+};
+let curOp = "delete";
+const opVals = {};
+function renderOps(){
+  $("#ops").innerHTML = Object.entries(OPS).map(([k,o]) => `<button class="op-tab${k===curOp?" on":""}" data-op="${k}"><i style="background:${o.c}"></i>${o.t}</button>`).join("");
+  $$("#ops .op-tab").forEach(b => b.onclick = () => { curOp = b.dataset.op; renderOps(); });
+  const o = OPS[curOp]; $("#op-desc").textContent = o.d;
+  const vals = opVals[curOp] ||= {};
+  $("#op-fields").innerHTML = o.f.map(f => {
+    let v = vals[f.k] ?? f.def;
+    if (v === "mid") v = ST.loaded ? Math.floor(ST.layers/2) : 0;
+    const id = `f-${curOp}-${f.k}`;
+    let inp;
+    if (f.type === "range") inp = `<div class="range-row"><input type="range" id="${id}-r" min="${f.min}" max="${f.max}" step="${f.step}" value="${Math.min(Math.max(v,f.min),f.max)}"><input type="number" step="any" id="${id}" value="${v}"></div>`;
+    else if (f.type === "select") inp = `<select id="${id}">${f.opts.map(([a,b]) => `<option value="${a}"${a==v?" selected":""}>${b}</option>`).join("")}</select>`;
+    else if (f.type === "textarea") inp = `<textarea id="${id}">${esc(v)}</textarea>`;
+    else inp = `<input type="${f.type==="number"?"number":"text"}" ${f.type==="number"?'step="any"':""} id="${id}" value="${esc(v)}">`;
+    const wide = f.type === "textarea" ? ' style="grid-column:1/-1"' : "";
+    return `<div class="field"${wide}><label class="f" for="${id}">${f.label}</label>${inp}${f.hint?`<div class="hint">${f.hint}</div>`:""}${f.type==="range"?`<div class="hint">Ползунок до ${f.max}, в поле можно ввести любое число</div>`:""}</div>`;
+  }).join("");
+  o.f.forEach(f => {
+    const id = `f-${curOp}-${f.k}`, el = $("#"+id);
+    const store = () => vals[f.k] = (f.type==="number"||f.type==="range") ? (el.value===""?"":Number(el.value)) : el.value;
+    el.addEventListener("input", () => { store(); if (f.type==="range") $("#"+id+"-r").value = el.value; });
+    if (f.type === "range") $("#"+id+"-r").addEventListener("input", e => { el.value = e.target.value; store(); });
+    if (curOp === "steer" && f.k === "name") el.addEventListener("change", () => {
+      const [p,n] = STEER[el.value]; vals.pos = p; vals.neg = n; renderOps();
+    });
+    store();
+  });
+  renderOpTarget();
+}
+function renderOpTarget(){
+  const o = OPS[curOp], btn = $("#apply-btn"), t = $("#op-target");
+  if (!ST.loaded){ btn.disabled = true; t.textContent = "Сначала загрузите модель"; return; }
+  const needLayers = o.layers && !(curOp === "noise" && (opVals.noise||{}).target === "embed");
+  btn.disabled = needLayers && sel.size === 0;
+  t.textContent = needLayers ? (sel.size ? `Слои: ${fmtSel()}` : "Выберите слои на карте мозга") : "Действует на всю модель";
+}
+$("#apply-btn").onclick = () => busy("Оперируем…", async () => {
+  const o = OPS[curOp], params = {...opVals[curOp]};
+  if (o.layers) params.layers = [...sel];
+  if (curOp === "steer" && params.name === "Своя эмоция") params.name = "своя эмоция";
+  const s = await api("/api/op", {type:curOp, params});
+  if (["delete","duplicate","shuffle","reverse"].includes(curOp)) sel = new Set();
+  setState(s); toast(s.journal.at(-1).desc);
+});
+
+/* ---------- journal ---------- */
+function renderJournal(){
+  const j = ST.loaded ? ST.journal : [];
+  $("#j-sub").textContent = j.length ? `${j.filter(e => e.enabled).length} из ${j.length} активны` : "Операций нет";
+  $("#journal").innerHTML = j.length ? j.map((e, i) => `
+    <li class="jr${e.enabled?"":" off"}">
+      <label class="switch" title="Включить или выключить"><input type="checkbox" data-tg="${e.id}" ${e.enabled?"checked":""}><span></span></label>
+      <div class="jd">${esc(e.desc)}${e.error?`<span class="err">Не применилось: ${esc(e.error)}</span>`:""}</div>
+      <div class="acts"><button data-mv="${e.id}" data-d="-1" title="Выше" ${i===0?"disabled":""}>↑</button><button data-mv="${e.id}" data-d="1" title="Ниже" ${i===j.length-1?"disabled":""}>↓</button><button data-rm="${e.id}" title="Удалить">✕</button></div>
+    </li>`).join("") : `<li class="hint" style="padding:8px 2px">Пациент пока цел. Выберите слои и инструмент.</li>`;
+}
+$("#journal").addEventListener("click", e => {
+  const mv = e.target.closest("[data-mv]"), rm = e.target.closest("[data-rm]");
+  if (mv) busy("Пересобираем пациента…", async () => setState(await api("/api/journal/move", {id:+mv.dataset.mv, dir:+mv.dataset.d})));
+  if (rm) busy("Пересобираем пациента…", async () => setState(await api("/api/journal/delete", {id:+rm.dataset.rm})));
+});
+$("#journal").addEventListener("change", e => {
+  const tg = e.target.closest("[data-tg]");
+  if (tg) busy("Пересобираем пациента…", async () => setState(await api("/api/journal/toggle", {id:+tg.dataset.tg})));
+});
+const undo = () => ST.loaded && ST.journal.length && busy("Отменяем…", async () => { setState(await api("/api/undo", {})); toast("Последняя операция отменена"); });
+$("#undo-btn").onclick = undo;
+$("#reset-btn").onclick = () => ST.loaded && busy("Возвращаем к норме…", async () => { setState(await api("/api/reset", {})); toast("Пациент полностью здоров"); });
+$("#export-btn").onclick = () => {
+  if (!ST.loaded) return;
+  const data = {model: ST.name, journal: ST.journal.map(({type,params,enabled,desc}) => ({type,params,enabled,desc}))};
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type:"application/json"}));
+  a.download = `рецепт-${ST.name.split(/[\\/]/).pop()}.json`; a.click();
+};
+$("#import-btn").onclick = () => ST.loaded ? $("#import-file").click() : toast("Сначала загрузите модель", true);
+$("#import-file").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return; e.target.value = "";
+  let data; try { data = JSON.parse(await f.text()); } catch { return toast("Файл не похож на рецепт", true); }
+  if (data.model && data.model !== ST.name) toast(`Рецепт был для ${data.model}. Индексы слоёв могут не совпасть`);
+  busy("Проводим операции по рецепту…", async () => setState(await api("/api/journal/import", {journal:data.journal})));
+};
+$("#save-btn").onclick = () => {
+  if (!ST.loaded) return;
+  const name = prompt("Название папки для пациента", ST.name.split(/[\\/]/).pop() + "-lobotomized");
+  if (name) busy("Сохраняем на диск…", async () => { const r = await api("/api/save", {name}); toast(`Сохранено в ${r.path}.${r.note}`); });
+};
+
+/* ---------- exam: chat ---------- */
+const QUICK = ["Кто ты?","Какая столица Франции?","Сосчитай от 1 до 10","Напиши стих про осень","Сколько будет 17 + 25?","Расскажи анекдот","Опиши свой идеальный день","Как тебя починить?"];
+$("#chips").innerHTML = QUICK.map(q => `<button class="chip">${q}</button>`).join("");
+$("#chips").onclick = e => { const c = e.target.closest(".chip"); if (c){ $("#prompt").value = c.textContent; ask(); } };
+$("#compare").checked = S.ui.compare;
+const syncCompare = () => $("#answers").classList.toggle("solo", !S.ui.compare);
+$("#compare").onchange = e => { S.ui.compare = e.target.checked; saveS(); syncCompare(); };
+syncCompare();
+let asking = false; const hist = [];
+async function streamTo(who, pre, timeEl, prompt){
+  pre.textContent = ""; pre.classList.add("cursor"); const t0 = performance.now();
+  try {
+    const r = await fetch("/api/generate", {method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({who, prompt, system:S.gen.system, gen:S.gen})});
+    if (!r.ok){ let d; try { d = (await r.json()).detail; } catch { d = r.statusText; } throw new Error(d); }
+    const rd = r.body.getReader(), dec = new TextDecoder();
+    for (;;){ const {done, value} = await rd.read(); if (done) break; pre.textContent += dec.decode(value, {stream:true}); pre.scrollTop = pre.scrollHeight; }
+  } catch (e) { pre.textContent += "\n[ошибка: " + e.message + "]"; }
+  pre.classList.remove("cursor"); timeEl.textContent = ((performance.now()-t0)/1000).toFixed(1) + " с";
+  if (!pre.textContent.trim()) pre.textContent = "(молчит)";
+  return pre.textContent;
+}
+async function ask(){
+  if (asking) return; if (!ST.loaded) return toast("Сначала загрузите модель", true);
+  const prompt = $("#prompt").value.trim(); if (!prompt) return;
+  asking = true; $("#ask-btn").disabled = true; $("#stop-btn").disabled = false;
+  $("#out-donor").textContent = S.ui.compare ? "Ждёт своей очереди…" : ""; $("#t-donor").textContent = ""; $("#t-patient").textContent = "";
+  const p = await streamTo("patient", $("#out-patient"), $("#t-patient"), prompt);
+  const d = S.ui.compare ? await streamTo("donor", $("#out-donor"), $("#t-donor"), prompt) : null;
+  hist.unshift({prompt, p, d, ops: ST.journal.filter(e => e.enabled).length});
+  renderHistory();
+  asking = false; $("#ask-btn").disabled = false; $("#stop-btn").disabled = true;
+}
+function renderHistory(){
+  $("#history").innerHTML = hist.slice(1, 30).map(h => `<details><summary>${esc(h.prompt.slice(0,90))} <span class="hint">· операций: ${h.ops}</span></summary>
+    <div class="hgrid">${h.d !== null ? `<div>${esc(h.d)}</div>` : ""}<div${h.d===null?' style="grid-column:1/-1"':""}>${esc(h.p)}</div></div></details>`).join("");
+}
+$("#clear-hist").onclick = () => { hist.length = 0; renderHistory(); };
+$("#ask-btn").onclick = ask;
+$("#stop-btn").onclick = () => api("/api/stop", {});
+$("#prompt").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) ask(); });
+
+/* ---------- exam: lens ---------- */
+$("#lens-btn").onclick = () => ST.loaded ? busy("Заглядываем в голову…", async () => {
+  const r = await api("/api/lens", {prompt:$("#lens-prompt").value, k:+$("#lens-k").value || 5});
+  const table = (rows, title) => rows ? `<div><table><thead><tr><th style="width:52px">${title}</th><th></th></tr></thead><tbody>${rows.map((row, i) =>
+    `<tr><td>${i}</td><td><div class="tokcell">${row.map(t => `<span class="tok" style="--p:${Math.min(t.p*1.5,1).toFixed(3)}" title="${(t.p*100).toFixed(1)}%">${esc(t.t)}</span>`).join("")}</div></td></tr>`).join("")}</tbody></table></div>`
+    : `<div class="bad">Пациент не отвечает: ${esc(r.error||"")}</div>`;
+  $("#lens-out").innerHTML = table(r.donor, "Донор") + table(r.patient, "Пациент");
+}) : toast("Сначала загрузите модель", true);
+
+/* ---------- exam: iq ---------- */
+$("#iq-btn").onclick = () => ST.loaded ? busy("Проводим тест… это может занять минуту", async () => {
+  const r = await api("/api/iq", {});
+  const card = (x, t) => `<div class="iq-card"><div class="hint">${t}</div><div class="big">${x.score}<small> из ${x.total}</small></div>
+    <div class="bar"><i style="width:${x.score/x.total*100}%"></i></div><div class="hint">Перплексия: ${x.ppl ?? "∞ — речь разрушена"}</div></div>`;
+  $("#iq-out").innerHTML = `<div class="iq-top">${card(r.donor,"Донор")}${card(r.patient,"Пациент")}</div>
+    <div class="iq-list">${r.patient.items.map((it, i) => `<div class="iq-row"><div>${esc(it.q)}</div>
+      <div class="a"><span class="${r.donor.items[i].ok?"ok":"bad"}">${r.donor.items[i].ok?"✓":"✗"}</span> ${esc(r.donor.items[i].a)}</div>
+      <div class="a"><span class="${it.ok?"ok":"bad"}">${it.ok?"✓":"✗"}</span> ${esc(it.a)}</div></div>`).join("")}</div>`;
+}) : toast("Сначала загрузите модель", true);
+
+/* ---------- tabs ---------- */
+$$(".tab").forEach(t => t.onclick = () => {
+  $$(".tab").forEach(x => x.classList.toggle("on", x === t));
+  $$("[data-pane]").forEach(p => p.hidden = p.dataset.pane !== t.dataset.tab);
+});
+
+/* ---------- drawers ---------- */
+function openDrawer(id){ $$(".drawer").forEach(d => d.classList.toggle("open", d.id === id)); $("#scrim").classList.add("show"); if (id === "model-drawer") loadModels(); if (id === "settings-drawer") renderSettings(); }
+function closeDrawers(){ $$(".drawer").forEach(d => d.classList.remove("open")); $("#scrim").classList.remove("show"); }
+$("#chip").onclick = () => openDrawer("model-drawer");
+$("#settings-btn").onclick = () => openDrawer("settings-drawer");
+$("#scrim").onclick = closeDrawers;
+$$("[data-close]").forEach(b => b.onclick = closeDrawers);
+$("#theme-btn").onclick = () => { const cur = document.documentElement.dataset.theme; S.ui.theme = cur === "dark" ? "light" : "dark"; saveS(); applyTheme(); };
+
+let MODELS = null;
+async function loadModels(){
+  renderLoadOpts("#load-opts");
+  try { MODELS = await api("/api/models"); } catch (e) { return toast(e.message, true); }
+  $("#gpu-info").textContent = MODELS.cuda ? `Видеокарта: ${MODELS.gpu}` : "Видеокарта не найдена, работаем на процессоре";
+  renderModels();
+}
+function renderModels(){
+  if (!MODELS) return;
+  const q = $("#model-search").value.trim().toLowerCase();
+  const m = x => !q || x.id.toLowerCase().includes(q);
+  const dl = MODELS.downloaded.filter(m), pr = MODELS.presets.filter(m);
+  $("#m-downloaded").innerHTML = dl.length ? dl.map(x => `<div class="model"><b>${esc(x.id)}<span class="size">${x.gb} ГБ</span></b>
+    <span class="meta">${esc(x.where)}</span><button class="btn small primary" data-path="${esc(x.path)}" data-label="${esc(x.id)}">Загрузить</button></div>`).join("")
+    : `<p class="hint">${q ? "Ничего не нашлось" : "Пока пусто. Выберите модель из рекомендуемых, она скачается автоматически."}</p>`;
+  $("#m-presets").innerHTML = pr.map(x => `<div class="model"><b>${esc(x.id)}<span class="size">${x.size}</span></b>
+    <span class="meta">${x.have ? '<span class="have">Уже скачана · </span>' : ""}${esc(x.note)}</span>
+    <button class="btn small${x.have?"":" primary"}" data-name="${esc(x.id)}">${x.have ? "Загрузить" : "Скачать"}</button></div>`).join("");
+}
+$("#model-search").oninput = renderModels;
+$("#model-search").addEventListener("keydown", e => { if (e.key === "Enter") $("#custom-load").click(); });
+function loadModel(body){
+  closeDrawers();
+  busy(`Кладём на стол ${body.label || body.name}… Если модель скачивается впервые, это займёт время, прогресс виден в чёрном окне`, async () => {
+    setState(await api("/api/load", {...body, ...S.load}));
+    sel = new Set(); renderOps(); toast("Пациент готов к операции");
+  });
+}
+$("#model-drawer").addEventListener("click", e => {
+  const b = e.target.closest("[data-path],[data-name]"); if (!b) return;
+  loadModel(b.dataset.path ? {path:b.dataset.path, label:b.dataset.label} : {name:b.dataset.name});
+});
+$("#custom-load").onclick = () => { const v = $("#model-search").value.trim(); if (v) loadModel({name:v}); else toast("Введите id модели или путь к папке", true); };
+
+$("#settings-default").onclick = () => { S = clone(DEFAULTS); saveS(); applyTheme(); renderSettings(); $("#compare").checked = S.ui.compare; syncCompare(); toast("Настройки вернулись к стандартным"); };
+$("#full-reset").onclick = () => {
+  S = clone(DEFAULTS); saveS(); applyTheme(); renderSettings(); $("#compare").checked = S.ui.compare; syncCompare();
+  for (const k in opVals) delete opVals[k]; renderOps();
+  if (ST.loaded) busy("Возвращаем всё к норме…", async () => { setState(await api("/api/reset", {})); toast("Всё как было"); });
+  else toast("Настройки сброшены");
+};
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeDrawers();
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if (!typing && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z"){ e.preventDefault(); undo(); }
+});
+
+renderOps();
+api("/api/state").then(s => { setState(s); if (!s.loaded) openDrawer("model-drawer"); }).catch(e => toast(e.message, true));
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "journal": [
+    {
+      "type": "duplicate",
+      "params": {
+        "layers": [
+          16
+        ],
+        "times": 6
+      },
+      "enabled": true,
+      "desc": "Слои 16 продублированы ×6"
+    }
+  ]
+}

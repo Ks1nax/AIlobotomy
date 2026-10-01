@@ -1,0 +1,16 @@
+name: 💡 Idea or new tool
+description: Suggest a new surgical tool, experiment or feature
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What should the tool do to the patient, and what do you expect to see?
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: How it could work
+      description: Optional — papers, code, links.

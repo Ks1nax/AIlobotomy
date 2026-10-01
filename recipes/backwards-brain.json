@@ -1,0 +1,22 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "journal": [
+    {
+      "type": "reverse",
+      "params": {
+        "layers": [
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      "enabled": true,
+      "desc": "Порядок слоёв 8–15 развёрнут"
+    }
+  ]
+}

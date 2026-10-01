@@ -1,0 +1,40 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "journal": [
+    {
+      "type": "noise",
+      "params": {
+        "layers": [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        "strength": 0.35,
+        "target": "mlp",
+        "seed": 1337
+      },
+      "enabled": true,
+      "desc": "Шум 0.35σ (MLP) в слоях 6–17"
+    },
+    {
+      "type": "gain",
+      "params": {
+        "layers": [
+          14
+        ],
+        "k": -1
+      },
+      "enabled": true,
+      "desc": "Громкость слоёв 14 × -1"
+    }
+  ]
+}

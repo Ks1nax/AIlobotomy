@@ -1,0 +1,25 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "journal": [
+    {
+      "type": "swap",
+      "params": {
+        "a": "cat",
+        "b": "dog",
+        "where": "both"
+      },
+      "enabled": true,
+      "desc": "Слова «cat» ↔ «dog» поменяны местами везде"
+    },
+    {
+      "type": "swap",
+      "params": {
+        "a": "cats",
+        "b": "dogs",
+        "where": "both"
+      },
+      "enabled": true,
+      "desc": "Слова «cats» ↔ «dogs» поменяны местами везде"
+    }
+  ]
+}

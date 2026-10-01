@@ -1,0 +1,18 @@
+{
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "journal": [
+    {
+      "type": "gain",
+      "params": {
+        "layers": [
+          10,
+          11,
+          12
+        ],
+        "k": 2.5
+      },
+      "enabled": true,
+      "desc": "Громкость слоёв 10–12 × 2.5"
+    }
+  ]
+}
